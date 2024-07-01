@@ -1,0 +1,14 @@
+{
+  "name": "rust-bpe",
+  "version": "0.1.0",
+  "files": [
+    "rust_bpe_bg.wasm",
+    "rust_bpe.js",
+    "rust_bpe.d.ts"
+  ],
+  "module": "rust_bpe.js",
+  "types": "rust_bpe.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
