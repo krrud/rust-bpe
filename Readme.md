@@ -38,18 +38,16 @@ let iterations = 15000;
 let tokenizer = Tokenizer::train_cpu(corpus, iterations, Some(output));
 ```
 
-**To tokenize text and retrieve tokens or indices in Rust:**
+
+**To tokenize text, extract token strings or indices, or detokenize back to the input:**
 ```rust
 let tokenizer = Tokenizer::load("path/to/your/trained-tokenizer.json").unwrap();
 let tokens = tokenizer.tokenize("your text to tokenize");
 let token_vals = tokenizer.get_tokens(&tokens);
 let token_indices = tokenizer.get_indices(&token_vals);
-```
-
-**To convert tokens back to their original string in Rust:**
-```rust
 let detokenized = tokenizer.detokenize(&tokens);
 ```
+
 
 **To use the tokenizer in the browser via Wasm:**
 
@@ -57,6 +55,7 @@ let detokenized = tokenizer.detokenize(&tokens);
 ```javascript
 npm install path/to/wasm-pkg
 ```
+
 
 *Then use it as follows:*
 ```javascript
@@ -68,7 +67,7 @@ npm install path/to/wasm-pkg
         await init();
 
         // Fetch the vocabulary and merge rules
-        const fetchTokenizer = await fetch("/path/to/trained_model.josn");
+        const fetchTokenizer = await fetch("/path/to/trained_model.json");
         if (!fetchTokenizer.ok) {
           throw new Error("Failed to fetch tokenizer");
         }
