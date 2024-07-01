@@ -7,5 +7,4 @@ fn main() {
     let iterations = 25000;
     let output = "./src/tokenizer_training.json";
     let tokenizer = Tokenizer::train_cpu(&source, iterations, Some(output));
-    tokenizer.save(output).unwrap();
 }

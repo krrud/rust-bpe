@@ -253,7 +253,7 @@ impl Tokenizer {
         if *token_indices.last().unwrap() == space_idx {
             token_indices.pop();
         }
-    
+        println!("Number of iterations: {}", iterations);
         let start_time = Instant::now();
         for i in 0..iterations {
             let iter_time = Instant::now();
@@ -337,7 +337,10 @@ impl Tokenizer {
         }
     
         let vocabulary: HashSet<String> = token_list.into_iter().collect();
-        Tokenizer::new(vocabulary, merge_rules)
+        let trained_tokenizer = Tokenizer::new(vocabulary, merge_rules);
+        trained_tokenizer.save(filepath).unwrap();
+
+        trained_tokenizer
     }   
     
     pub fn clean_text(text: &str) -> String {
