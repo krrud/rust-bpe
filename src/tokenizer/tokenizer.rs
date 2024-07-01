@@ -6,8 +6,6 @@ use std::time::Instant;
 use serde::{Serialize, Deserialize};
 use serde_json;
 
-use crate::gpu::{initialize_wgpu, prep_token_data, run_gpu_pipeline};
-
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Tokenizer {
@@ -139,8 +137,8 @@ impl Tokenizer {
         result
     }
 
-    pub fn train_cpu(source: &str, iterations: usize, output_filepath: Option<&str>) -> Self {
-        // Train tokenizer on CPU using byte pair encoding
+    pub fn train_cpu_single_word(source: &str, iterations: usize, output_filepath: Option<&str>) -> Self {
+        // Train tokenizer on CPU using byte pair encoding - only capable of handling single word tokens
         let filepath = output_filepath.unwrap_or("./src/tokenizer.json");
         let mut merge_rules: Vec<(String, String)> = Vec::new();
         let mut token_list: Vec<String> = vec!["</w>".to_string()];
@@ -162,6 +160,7 @@ impl Tokenizer {
         
         let start_time = Instant::now();
         for i in 0..iterations {
+            let iter_time = Instant::now();
             // Count pair frequencies
             let pair_frequencies: HashMap<(usize, usize), usize> = token_indices.par_iter()
                 .flat_map_iter(|tokens| {
@@ -216,7 +215,8 @@ impl Tokenizer {
             let elapsed_time = start_time.elapsed().as_secs_f32();
             let percent = 100.0 * ((i + 1) as f32 / iterations as f32);
             let iteration_time = elapsed_time / (i as f32 + 1.0);
-            print!("\rTraining Tokenizer: {:.2}% | ETA: {:.2}s", percent, iteration_time * (iterations as f32 - (i as f32 + 1.0)));
+            // print!("\rTraining Tokenizer: {:.2}% | ETA: {:.2}s", percent, iteration_time * (iterations as f32 - (i as f32 + 1.0)));
+            println!("Iteration {} time: {:?}", i, iter_time.elapsed().as_secs_f32());
             io::stdout().flush().unwrap();
         }
 
@@ -225,87 +225,121 @@ impl Tokenizer {
         Tokenizer::new(vocabulary, merge_rules)
     }
 
-    pub async fn train_gpu(source: &str, iterations: usize, vocab_size: usize, output_filepath: Option<&str>) -> Self {
-        // Train tokenizer on GPU using byte pair encoding
+    pub fn train_cpu(source: &str, iterations: usize, output_filepath: Option<&str>) -> Self {
         let filepath = output_filepath.unwrap_or("./src/tokenizer.json");
         let mut merge_rules: Vec<(String, String)> = Vec::new();
-        let mut token_list: Vec<String> = vec!["</w>".to_string()];
-        let mut token_map: HashMap<String, u32> = HashMap::new();
-        token_map.insert("</w>".to_string(), 0);
+        let mut token_list: Vec<String> = vec!["</w>".to_string(), " ".to_string()];
+        let end_of_word_idx = 0;
+        let space_idx = 1;
     
-        // Initialize token indices
-        let mut token_indices: Vec<u32> = source.split_whitespace()
-            .flat_map(|word| {
-                word.chars()
-                    .map(|c| {
-                        let s = c.to_string().to_lowercase();
-                        if let Some(&index) = token_map.get(&s) {
-                            index
-                        } else {
-                            let index = token_list.len() as u32;
-                            token_list.push(s.clone());
-                            token_map.insert(s, index);
-                            index
-                        }
-                    })
-                    .chain(std::iter::once(0)) // Add index for "</w>"
-                    .collect::<Vec<u32>>()
-            })
-            .collect();
+        // Split the source into words and handle spaces between words
+        let mut token_indices: Vec<usize> = Vec::with_capacity(source.len());
+        let mut token_map: HashMap<String, usize> = HashMap::new();
+        token_map.insert("</w>".to_string(), end_of_word_idx);
+        token_map.insert(" ".to_string(), space_idx);
+    
+        for word in source.split_whitespace() {
+            for c in word.chars() {
+                let s = c.to_string().to_lowercase();
+                let index = *token_map.entry(s.clone()).or_insert_with(|| {
+                    token_list.push(s);
+                    token_list.len() - 1
+                });
+                token_indices.push(index);
+            }
+            token_indices.push(end_of_word_idx); // End of word token
+            token_indices.push(space_idx); // Space between words
+        }
+        if *token_indices.last().unwrap() == space_idx {
+            token_indices.pop();
+        }
     
         let start_time = Instant::now();
-        let (device, queue) = initialize_wgpu().await;
-
         for i in 0..iterations {
             let iter_time = Instant::now();
-            let pair_frequencies_gpu = run_gpu_pipeline(&device, &queue, &token_indices, 128).await;
-            let max_pair = pair_frequencies_gpu.par_iter().max_by_key(|&(_, &count)| count);
-
-            if let Some(((first, second), _)) = max_pair {
-                let first = *first as u32;
-                let second = *second as u32;
-                let new_token = format!("{}{}", token_list[first as usize], token_list[second as usize]);
-                let new_index = token_list.len() as u32;
-                token_list.push(new_token.clone());
-                merge_rules.push((token_list[first as usize].clone(), token_list[second as usize].clone()));
     
-                let update_time = Instant::now();
+            // Count pair frequencies using Rayon for parallel processing
+            let pair_frequencies = token_indices.par_windows(2)
+                .fold(HashMap::new, |mut acc, window| {
+                    if let [a, b] = window {
+                        *acc.entry((*a, *b)).or_insert(0) += 1;
+                    }
+                    acc
+                })
+                .reduce(HashMap::new, |mut acc, partial| {
+                    for (key, count) in partial {
+                        *acc.entry(key).or_insert(0) += count;
+                    }
+                    acc
+                });
+    
+            // Delay merging common pairs in the first few iterations to avoid bottlenecks
+            let delay_common_pairs = 10;
+            let should_delay = |token: &String| token == "</w>" || token == " ";
+    
+            let (first, second) = if i < delay_common_pairs {
+                pair_frequencies.iter()
+                    .filter(|&(&(first, second), _)| {
+                        !should_delay(&token_list[first]) && !should_delay(&token_list[second])
+                    })
+                    .max_by_key(|&(_, &count)| count)
+            } else {
+                pair_frequencies.iter().max_by_key(|&(_, &count)| count)
+            }
+            .map(|(&pair, _)| pair)
+            .unwrap_or((usize::MAX, usize::MAX));
+    
+            // Find the most frequent pair and merge them
+            if first != usize::MAX && second != usize::MAX {
+                let new_token = format!("{}{}", token_list[first], token_list[second]);
+                let new_index = token_list.len();
+                token_list.push(new_token.clone());
+                merge_rules.push((token_list[first].clone(), token_list[second].clone()));
+                // println!("Merging: '{}' + '{}' into '{}'", token_list[first], token_list[second], new_token);
+    
+                // Update token_indices
                 let mut new_token_indices = Vec::with_capacity(token_indices.len());
-                let mut iter = token_indices.iter().peekable();
-                while let Some(&current) = iter.next() {
-                    if iter.peek() == Some(&&second) && current == first {
+                let mut skip = false;
+                for window in token_indices.windows(2) {
+                    if skip {
+                        skip = false;
+                        continue;
+                    }
+                    if window[0] == first && window[1] == second {
                         new_token_indices.push(new_index);
-                        iter.next(); // Skip the second token in the pair
+                        skip = true;
                     } else {
-                        new_token_indices.push(current);
+                        new_token_indices.push(window[0]);
+                    }
+                }
+                if !skip {
+                    if let Some(&last) = token_indices.last() {
+                        new_token_indices.push(last);
                     }
                 }
                 token_indices = new_token_indices;
-    
             } else {
                 break; // No more pairs to merge
             }
     
-            // Save tokenizer every 50 iterations
+            // Save every 50 iterations
             if i % 50 == 0 {
                 let vocabulary: HashSet<String> = token_list.clone().into_iter().collect();
                 let tokenizer = Tokenizer::new(vocabulary, merge_rules.clone());
-                tokenizer.save(&format!("{}", filepath)).unwrap();
-
-                // Log progress and metrics
-                let elapsed_time = start_time.elapsed().as_secs_f32();
-                let percent = 100.0 * ((i + 1) as f32 / iterations as f32);
-                let iteration_time = elapsed_time / (i as f32 + 1.0);
-                print!("\rTraining Tokenizer: {:.2}% | ETA: {:.2}s", percent, iteration_time * (iterations as f32 - (i as f32 + 1.0)));
-                io::stdout().flush().unwrap();
+                tokenizer.save(filepath).unwrap();
             }
+    
+            let elapsed_time = start_time.elapsed().as_secs_f32();
+            let percent = 100.0 * ((i + 1) as f32 / iterations as f32);
+            let iteration_time = elapsed_time / (i as f32 + 1.0);
             println!("Iteration {} time: {:?}", i, iter_time.elapsed().as_secs_f32());
+            io::stdout().flush().unwrap();
         }
     
         let vocabulary: HashSet<String> = token_list.into_iter().collect();
         Tokenizer::new(vocabulary, merge_rules)
-    }
-
+    }   
+    
     pub fn clean_text(text: &str) -> String {
         // Clean text by converting to lowercase and removing newlines
         let mut text = text.to_lowercase();
@@ -375,7 +409,7 @@ mod tests {
 
     #[test]
     fn validate_tokenizer() {
-        let tokenizer = Tokenizer::load("./src/tokenizer_13k.json").unwrap();
+        let tokenizer = Tokenizer::load("./src/tokenizer_training.json").unwrap();
         println!("Vocabulary size: {:?}", tokenizer.vocabulary.len());
 
         let duplicates = has_duplicates(tokenizer.vocabulary.iter().cloned().collect::<Vec<_>>());
@@ -398,6 +432,5 @@ mod tests {
     fn has_duplicates(mut vocab: Vec<String>) -> bool {
         vocab.sort();
         vocab.windows(2).any(|w| w[0] == w[1])
-    }
-    
+    }  
 }
