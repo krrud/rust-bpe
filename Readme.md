@@ -63,7 +63,8 @@ npm install path/to/wasm-pkg
 
     async function bpeExample(textInput) {
       try {
-        // Initializes the module
+        // Import and initialize the module
+        const {default: init, TokenizerWrapper} = await import('/path/to/wasm-pkg');
         await init();
 
         // Fetch the vocabulary and merge rules
