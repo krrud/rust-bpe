@@ -38,19 +38,55 @@ let iterations = 15000;
 let tokenizer = Tokenizer::train_cpu(corpus, iterations, Some(output));
 ```
 
-**To tokenize text and retrieve tokens or indices:**
+
+**To tokenize text, extract token strings or indices, or detokenize back to the input:**
 ```rust
 let tokenizer = Tokenizer::load("path/to/your/trained-tokenizer.json").unwrap();
 let tokens = tokenizer.tokenize("your text to tokenize");
 let token_vals = tokenizer.get_tokens(&tokens);
 let token_indices = tokenizer.get_indices(&token_vals);
-```
-
-**To convert tokens back to their original string:**
-```rust
 let detokenized = tokenizer.detokenize(&tokens);
 ```
 
+
+**To use the tokenizer in the browser via Wasm:**
+
+*First install the wasm pkg in your web project:*
+```javascript
+npm install path/to/wasm-pkg
+```
+
+
+*Then use it as follows:*
+```javascript
+    import init, {TokenizerWrapper} from 'rust-bpe';
+
+    async function bpeExample(textInput) {
+      try {
+        // Import and initialize the module
+        const {default: init, TokenizerWrapper} = await import('/path/to/wasm-pkg');
+        await init();
+
+        // Fetch the vocabulary and merge rules
+        const fetchTokenizer = await fetch("/path/to/trained_model.json");
+        if (!fetchTokenizer.ok) {
+          throw new Error("Failed to fetch tokenizer");
+        }
+        const {vocabulary, merge_rules} = await fetchTokenizer.json();
+
+        // Instantiate the tokenizer
+        const tokenizer = new TokenizerWrapper(vocabulary, merge_rules);
+
+        // Use the tokenizer
+        const indices = tokenizer.tokenize(textInput);
+        const strings = tokenizer.getTokens(indices);
+        const rebuilt = tokenizer.detokenize(indices);
+
+      } catch (error) {
+        console.error("Failed to load WASM module or tokenizer:", error);
+      }
+    };
+```
 
 ## Acknowledgements <a name="acknowledgements"></a>
 Training data was graciously provided by [The Gutenberg Project](https://www.gutenberg.org/).
