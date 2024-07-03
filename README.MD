@@ -11,7 +11,7 @@
 
 
 ## Overview <a name="overview"></a>
-This project introduces a robust and lightweight byte-pair encoding (BPE) tokenizer, designed to handle linguistic data efficiently. While it primarily focuses on the English language, its architecture allows it to model any language effectively. The tokenizer is equipped with a comprehensive vocabulary of approximately 15,000 tokens, demonstrating strong adaptability to a variety of unseen text inputs.
+This project introduces a robust and lightweight byte-pair encoding (BPE) tokenizer, designed to handle linguistic data efficiently. While it primarily focuses on the English language, its architecture allows it to model any language effectively. The tokenizer is equipped with a comprehensive vocabulary of over 20,000 tokens, demonstrating strong adaptability to a variety of unseen text inputs.
 
 The tokenizer is compiled for web use, leveraging the power of WebAssembly through wasm-bindgen. This makes it readily accessible for integration into web applications, providing a seamless user experience without the need for server-side processing.
 
@@ -32,10 +32,11 @@ cargo build
 ## Usage <a name="usage"></a>
 **To train the tokenizer with your corpus:**
 ```rust
-let corpus = "path/to/corpus/dir";
+let corpus = Tokenizer::process_dataset("path/to/corpus/dir");
 let output = "path/to/output-file.json";
-let iterations = 15000;
-let tokenizer = Tokenizer::train_cpu(corpus, iterations, Some(output));
+let iterations = 10000;
+
+let tokenizer = Tokenizer::train_cpu(corpus, iterations, output, None);
 ```
 
 
@@ -50,17 +51,7 @@ let detokenized = tokenizer.detokenize(&tokens);
 
 
 **To use the tokenizer in the browser via Wasm:**
-
-*First install the wasm pkg in your web project:*
 ```javascript
-npm install path/to/wasm-pkg
-```
-
-
-*Then use it as follows:*
-```javascript
-    import init, {TokenizerWrapper} from 'rust-bpe';
-
     async function bpeExample(textInput) {
       try {
         // Import and initialize the module
@@ -89,7 +80,10 @@ npm install path/to/wasm-pkg
 ```
 
 ## Acknowledgements <a name="acknowledgements"></a>
-Training data was graciously provided by [The Gutenberg Project](https://www.gutenberg.org/).
+Training data was graciously provided by:
+- [The Gutenberg Project](https://www.gutenberg.org/)
+- [Wiki Dumps](https://en.wikipedia.org/wiki/Wikipedia:Database_download/)
+- [CNN Dailymail Database](https://huggingface.co/datasets/ccdv/cnn_dailymail/)
 
 
 ## License <a name="license"></a>
