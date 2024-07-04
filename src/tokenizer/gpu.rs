@@ -259,7 +259,7 @@ pub async fn train_gpu(source: &str, iterations: usize, vocab_size: usize, outpu
 
         // Save tokenizer every 50 iterations
         if i % 50 == 0 {
-            let vocabulary: HashSet<String> = token_list.clone().into_iter().collect();
+            let vocabulary: IndexMap<String> = token_list.clone().into_iter().collect();
             let tokenizer = Tokenizer::new(vocabulary, merge_rules.clone());
             tokenizer.save(&format!("{}", filepath)).unwrap();
 
@@ -273,6 +273,6 @@ pub async fn train_gpu(source: &str, iterations: usize, vocab_size: usize, outpu
         println!("Iteration {} time: {:?}", i, iter_time.elapsed().as_secs_f32());
     }
 
-    let vocabulary: HashSet<String> = token_list.into_iter().collect();
+    let vocabulary: IndexMap<String> = token_list.into_iter().collect();
     Tokenizer::new(vocabulary, merge_rules)
 }

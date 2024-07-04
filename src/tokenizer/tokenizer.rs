@@ -6,6 +6,8 @@ use std::time::Instant;
 use serde::{Serialize, Deserialize};
 use serde_json;
 
+use crate::tokenizer::TokenConfig;
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Tokenizer {
@@ -13,10 +15,11 @@ pub struct Tokenizer {
     merge_rules: Vec<(String, String)>,
     token_to_index: HashMap<String, usize>,
     index_to_token: HashMap<usize, String>,
+    config: TokenConfig,
 }
 
 impl Tokenizer {
-    pub fn new(vocabulary: HashSet<String>, merge_rules: Vec<(String, String)>) -> Self {
+    pub fn new(vocabulary: HashSet<String>, merge_rules: Vec<(String, String)>, config: TokenConfig) -> Self {
         let mut vocabulary = vocabulary;
         vocabulary.insert("<unk>".to_string());
 
@@ -33,6 +36,7 @@ impl Tokenizer {
             merge_rules,
             token_to_index,
             index_to_token,
+            config,
         }
     }
 
@@ -64,73 +68,93 @@ impl Tokenizer {
         tokens.iter().map(|token| self.get_index(token).unwrap()).collect()
     }
 
-    pub fn tokenize(&self, text: &str) -> Vec<usize> {
-        // Tokenize input text based on learned merge rules
-        let cleaned_text = Tokenizer::clean_text(text);
-        let mut words: Vec<Vec<String>> = cleaned_text.split_whitespace()
-            .map(|word| {
-                word.chars()
-                    .map(|c| c.to_string().to_lowercase())
-                    .collect::<Vec<String>>()
-                    .into_iter()
-                    .chain(std::iter::once("</w>".to_string()))
-                    .collect()
-            })
-            .collect();
+    pub fn split_with_punctuation(text: &str) -> Vec<String> {
+        let mut result = Vec::new();
+        let mut start = 0;
     
-        // Apply merge rules
-        for (first, second) in &self.merge_rules {
-            let new_token = format!("{}{}", first, second);
-            words = words.iter()
-                .map(|tokens| {
-                    let mut new_tokens = Vec::with_capacity(tokens.len());
-                    let mut i = 0;
-                    while i < tokens.len() {
-                        if i + 1 < tokens.len() && &tokens[i] == first && &tokens[i + 1] == second {
-                            new_tokens.push(new_token.clone());
-                            i += 2; // skip next token since it's merged
-                        } else {
-                            new_tokens.push(tokens[i].clone());
-                            i += 1;
-                        }
-                    }
-                    new_tokens
-                })
-                .collect();
+        for (i, c) in text.char_indices() {
+            if c == '.' || c == '!' || c == '?' {
+                // Include the punctuation mark in the sentence
+                let end = i + c.len_utf8();
+                result.push(text[start..end].to_string());
+                // Move the start to the next character after the punctuation mark
+                start = end;
+            }
         }
-
-        let unk_index = self.get_index("<unk>").unwrap_or(0);
-        words.iter()
-            .flat_map(|tokens| 
-                tokens.iter().map(|token| 
-                    self.get_index(&token).unwrap_or(unk_index)
-                )
-            )
-            .collect()
+    
+        // Add any remaining text as the last sentence
+        if start < text.len() {
+            result.push(text[start..].to_string());
+        }
+    
+        result
     }
 
+    pub fn tokenize(&self, text: &str) -> Vec<usize> {
+        // Tokenize text using trained bpe tokenizer
+        let cleaned_text = Self::clean_text(text);
+        let mut tokens = Vec::new();
+
+        for sentence in Self::split_with_punctuation(&cleaned_text) {
+            tokens.extend(self.tokenize_sentence(sentence.trim()));
+        }
+
+        tokens
+    }
+
+    pub fn tokenize_sentence(&self, sentence: &str) -> Vec<usize> {
+        let mut tokens = Vec::new();
+        let mut start = 0;
+
+        while start < sentence.len() {
+            let mut max_match = "";
+            let mut max_match_length = 0;
+
+            // Find largest token that matches the text
+            for end in start + 1..=sentence.len() {
+                let substr = &sentence[start..end];
+                if self.vocabulary.contains(substr) && substr.len() > max_match_length {
+                    max_match = substr;
+                    max_match_length = substr.len();
+                }
+            }
+
+            if max_match.is_empty() {
+                // If no token is found, append unknown token
+                tokens.push(self.config.unknown.index);
+                start += 1;
+            } else {
+                // Add the longest match and update the start position
+                tokens.push(self.get_index(max_match).unwrap());
+                start += max_match_length;
+            }
+
+            // Add end-of-word token if we are at the end of a word
+            if start < sentence.len() && sentence.as_bytes()[start] == b' ' {
+                tokens.push(self.config.space.index);
+                start += 1; // Skip the space
+            }
+        }
+
+        // Add end-of-sentence token
+        if start == sentence.len() {
+            tokens.push(self.config.eos.index);
+        }
+
+        tokens
+    }
 
     pub fn detokenize(&self, indices: &[usize]) -> String {
-        // Convert token indices back to text
+        // Detokenize indices into a single string
         let mut result = String::new();
-        let mut previous_token_was_word = false;
-
         for &idx in indices {
             if let Some(token) = self.get_token(idx) {
-                if token.ends_with("</w>") {
-                    // Add the token without the </w>, and a space if it's not the first word
-                    if !result.is_empty() && previous_token_was_word {
-                        result.push(' ');
+                if !token.trim().is_empty() || token == " "{
+                    if self.config.is_eos(&token) {
+                        result.push_str(" ");
+                    } else {
+                        result.push_str(&token);
                     }
-                    result.push_str(&token.replace("</w>", ""));
-                    previous_token_was_word = true;
-                } else {
-                    // Handle punctuation or other non-word tokens
-                    if previous_token_was_word {
-                        result.push(' ');
-                    }
-                    result.push_str(&token);
-                    previous_token_was_word = false;
                 }
             }
         }
@@ -139,39 +163,38 @@ impl Tokenizer {
 
     pub fn train_cpu(source: &str, iterations: usize, output_filepath: &str, start_filepath: Option<&str>) -> Self {
         // Train tokenizer on CPU using byte pair encoding
+        let mut config = TokenConfig::new();
         let mut merge_rules: Vec<(String, String)>;
         let mut token_list: Vec<String>;
         let mut token_indices: Vec<usize>;
         let mut token_map: HashMap<String, usize>;
-        let end_of_word_idx: usize;
-        let space_idx: usize;
 
         // Load existing tokenizer if provided
         if let Some(start) = start_filepath {
             let tokenizer = Tokenizer::load(start).expect("Failed to load tokenizer");
             merge_rules = tokenizer.get_merge_rules();
             token_list = tokenizer.get_vocabulary().into_iter().collect();
-            end_of_word_idx = tokenizer.get_index("</w>").unwrap_or(0);
-            space_idx = tokenizer.get_index(" ").unwrap_or(1);
 
-            // Rebuild token_map and token_indices
+            // Rebuild token_map and token_indices using only space to separate words
             token_map = tokenizer.token_to_index.clone();
             token_indices = source.split_whitespace().flat_map(|word| {
-                word.chars().map(|c| token_map.get(&c.to_string()).unwrap().to_owned()).chain(Some(end_of_word_idx)).chain(Some(space_idx))
+                word.chars().map(|c| token_map.get(&c.to_string()).unwrap().to_owned()).chain(Some(config.space.index))
             }).collect();
+            token_indices.pop(); 
         } else {
             // Initialize tokenizer from scratch
             merge_rules = Vec::new();
-            token_list = vec!["</w>".to_string(), " ".to_string()];
-            end_of_word_idx = 0;
-            space_idx = 1;
+            token_list = config.get_values().iter().map(|v| v.to_string()).collect();
 
-            // Split the source into words and handle spaces between words
+            // Split the source into words and handle end of words
             token_indices = Vec::with_capacity(source.len());
             token_map = HashMap::new();
-            token_map.insert("</w>".to_string(), end_of_word_idx);
-            token_map.insert(" ".to_string(), space_idx);
-    
+            let values = config.get_values();
+            let indices = config.get_indices();
+            for (value, &index) in values.iter().zip(indices.iter()) {
+                token_map.insert(value.to_string(), index);
+            }
+
             for word in source.split_whitespace() {
                 for c in word.chars() {
                     let s = c.to_string().to_lowercase();
@@ -181,10 +204,9 @@ impl Tokenizer {
                     });
                     token_indices.push(index);
                 }
-                token_indices.push(end_of_word_idx); // End of word token
-                token_indices.push(space_idx); // Space between words
+                token_indices.push(config.space.index); // </w> between words
             }
-            if *token_indices.last().unwrap() == space_idx {
+            if *token_indices.last().unwrap() == config.space.index {
                 token_indices.pop();
             }
         }
@@ -210,7 +232,7 @@ impl Tokenizer {
     
             // Delay merging common pairs for first few iterations to avoid bottlenecks
             let delay_common_pairs = 10;
-            let should_delay = |token: &String| token == "</w>" || token == " ";
+            let should_delay = |token: &String| token == " ";
     
             let (first, second) = if i < delay_common_pairs {
                 pair_frequencies.iter()
@@ -253,13 +275,14 @@ impl Tokenizer {
                 }
                 token_indices = new_token_indices;
             } else {
-                break; // No more pairs to merge
+                break; // No more pairs to merge - we're done here folks
             }
     
             // Save every 50 iterations
             if i % 50 == 0 {
                 let vocabulary: HashSet<String> = token_list.clone().into_iter().collect();
-                let tokenizer = Tokenizer::new(vocabulary, merge_rules.clone());
+                config.set_indices(Self::extract_indices(&vocabulary, &config));
+                let tokenizer = Tokenizer::new(vocabulary, merge_rules.clone(), config.clone());
                 tokenizer.save(output_filepath).unwrap();
             }
     
@@ -271,100 +294,23 @@ impl Tokenizer {
         }
     
         let vocabulary: HashSet<String> = token_list.into_iter().collect();
-        let trained_tokenizer = Tokenizer::new(vocabulary, merge_rules);
+        config.set_indices(Self::extract_indices(&vocabulary, &config));
+        let trained_tokenizer = Tokenizer::new(vocabulary, merge_rules, config);
         trained_tokenizer.save(output_filepath).unwrap();
 
         trained_tokenizer
     } 
-     
-    pub fn train_cpu_single_word(source: &str, iterations: usize, output_filepath: Option<&str>) -> Self {
-        // Train tokenizer on CPU using byte pair encoding - only capable of handling single word tokens
-        let filepath = output_filepath.unwrap_or("./src/tokenizer.json");
-        let mut merge_rules: Vec<(String, String)> = Vec::new();
-        let mut token_list: Vec<String> = vec!["</w>".to_string()];
-        let mut token_indices: Vec<Vec<usize>> = source.split_whitespace()
-            .map(|word| {
-                word.chars()
-                    .map(|c| {
-                        let s = c.to_string().to_lowercase();
-                        let index = token_list.iter().position(|x| x == &s).unwrap_or_else(|| {
-                            token_list.push(s.clone());
-                            token_list.len() - 1
-                        });
-                        index
-                    })
-                    .chain(std::iter::once(0)) // Add index for "</w>"
-                    .collect::<Vec<_>>()
-            })
-            .collect();
-        
-        let start_time = Instant::now();
-        for i in 0..iterations {
-            let iter_time = Instant::now();
-            // Count pair frequencies
-            let pair_frequencies: HashMap<(usize, usize), usize> = token_indices.par_iter()
-                .flat_map_iter(|tokens| {
-                    tokens.windows(2).filter_map(|window| {
-                        match window {
-                            [a, b] => Some(((*a, *b), 1)),
-                            _ => None,
-                        }
-                    })
-                })
-                .fold(|| HashMap::new(), |mut acc, (pair, count)| {
-                    *acc.entry(pair).or_insert(0) += count;
-                    acc
-                })
-                .reduce(HashMap::new, |mut acc, partial| {
-                    for (key, count) in partial {
-                        *acc.entry(key).or_insert(0) += count;
-                    }
-                    acc
-                });
-
-            // Find the most frequent pair and merge them
-            if let Some(((first, second), _)) = pair_frequencies.par_iter().max_by_key(|&(_, &count)| count) {
-                let new_token = format!("{}{}", token_list[*first], token_list[*second]);
-                let new_index = token_list.len();
-                token_list.push(new_token);
-                merge_rules.push((token_list[*first].clone(), token_list[*second].clone()));
-    
-                token_indices.par_iter_mut().for_each(|tokens| {
-                    let mut i = 0;
-                    while i < tokens.len() {
-                        if i + 1 < tokens.len() && tokens[i] == *first && tokens[i + 1] == *second {
-                            tokens[i] = new_index;
-                            tokens.remove(i + 1); // remove the second part of the merged pair
-                        } else {
-                            i += 1;
-                        }
-                    }
-                });
-            } else {
-                break; // No more pairs to merge
-            }
-            
-            // Save every 50 iterations
-            if i % 50 == 0 {
-                let vocabulary: HashSet<String> = token_list.clone().into_iter().collect();
-                let tokenizer = Tokenizer::new(vocabulary, merge_rules.clone());
-                tokenizer.save(&format!("{}", filepath)).unwrap();
-            }
-
-            // Log progress and metrics
-            let elapsed_time = start_time.elapsed().as_secs_f32();
-            let percent = 100.0 * ((i + 1) as f32 / iterations as f32);
-            let iteration_time = elapsed_time / (i as f32 + 1.0);
-            // print!("\rTraining Tokenizer: {:.2}% | ETA: {:.2}s", percent, iteration_time * (iterations as f32 - (i as f32 + 1.0)));
-            println!("Iteration {} time: {:?}", i, iter_time.elapsed().as_secs_f32());
-            io::stdout().flush().unwrap();
+ 
+    fn extract_indices(token_list: &HashSet<String>, config: &TokenConfig) -> Vec<usize> {
+        let mut indices = Vec::new();
+        for token in config.get_values() {
+            // get index from hashset
+            let index = token_list.iter().position(|t| t == &token).unwrap();
+            indices.push(index);
         }
-
-        // Create tokenizer from final vocabulary and merge rules
-        let vocabulary: HashSet<String> = token_list.into_iter().collect();
-        Tokenizer::new(vocabulary, merge_rules)
+        indices
     }
-    
+
     pub fn clean_text(text: &str) -> String {
         // Clean text by converting to lowercase and removing newlines
         let mut text = text.to_lowercase();
@@ -384,7 +330,7 @@ impl Tokenizer {
                     Ok(bytes) => {
                         let source_text = String::from_utf8_lossy(&bytes);
                         let clean_text = Tokenizer::clean_text(&source_text);
-                        text.push(' '); // space between files
+                        text.push(' ');
                         text.push_str(&clean_text);
                     },
                     Err(e) => {
@@ -406,49 +352,41 @@ impl Tokenizer {
     pub fn load(path: &str) -> std::io::Result<Self> {
         // Load tokenizer from a JSON file
         let data = std::fs::read_to_string(path)?;
+        let config = TokenConfig::new();
         let tokenizer: Tokenizer = serde_json::from_str(&data)?;
         Ok(tokenizer)
-    }
-
-    pub fn pad_sequences(&self, sequences: &Vec<Vec<usize>>, max_len: usize) -> Vec<Vec<usize>> {
-        // Pad sequences to a fixed length
-        let pad_token_id = 0;
-        sequences.iter().map(|seq| {
-            if seq.len() > max_len {
-                // Truncate sequence if it's too long
-                seq[..max_len].to_vec()
-            } else {
-                // Pad sequence with pad_token_id if it's too short
-                let mut padded_seq = seq.clone();
-                padded_seq.resize(max_len, pad_token_id);
-                padded_seq
-            }
-        }).collect()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    const TEST_STR: &str = "The quick brown fox jumps over the lazy dog, while pack_my_box_with_five_dozen_liquor_jugs! Testing, 1234... How's that? #Tokenizer-Challenge!";
+    // const TEST_STR: &str = "Hello, world! The quick brown fox jumps over the lazy dog 123 times. Can you believe it? This string features (parentheses), [brackets], {braces}, and even <angle brackets>. Don't forget about quotes: 'single', \"double\", and `backticks` for code. Special characters like @, #, $, %, &, *, ^, +, =, and | are also included.";
+    const TEST_STR: &str = "In this example:
 
+The create_vocab function creates an IndexMap from a list of tokens. Each token is associated with its index, but because IndexMap does not allow duplicates, repeated tokens are ignored after their first insertion.
+The order of tokens as they first appear is preserved in the IndexMap, and each token can be accessed in O(1) average time complexity.
+Conclusion
+IndexMap is an excellent choice if you need the characteristics of both a map and a vector. It's particularly useful when the order of elements is significant and you also need fast access based on keys. This makes it a powerful tool for many scenarios in data processing, caching, and more, where both order and performance are crucial.";
+    // const TEST_STR: &str = "we had a good time";
     #[test]
     fn validate_tokenizer() {
-        let tokenizer = Tokenizer::load("./src/resources/tokenizer_20k.json").unwrap();
-        println!("Vocabulary size: {:?}", tokenizer.vocabulary.len());
-
+        let tokenizer = Tokenizer::load("./src/tokenizer_train.json").unwrap();
         let duplicates = has_duplicates(tokenizer.vocabulary.iter().cloned().collect::<Vec<_>>());
         assert_eq!(duplicates, false);
 
         let tokens = tokenizer.tokenize(&TEST_STR);
         let token_vals = tokenizer.get_tokens(&tokens);
         let token_indices = tokenizer.get_indices(&token_vals);
-        println!("Tokens: {:?}", token_vals); 
-        println!("Token indices: {:?}", token_indices);
-
         let detokenized = tokenizer.detokenize(&tokens);
+
+        println!("Input: {:?}", TEST_STR);
+        println!("Tokens: {:?}", token_vals); 
+        // println!("Token indices: {:?}", token_indices);
         println!("Detokenized: {:?}", detokenized);
-        
+        // println!("Num tokens: {:?}", tokens.len());
+        // println!("Vocabulary size: {:?}", tokenizer.vocabulary.len());
+
         let expected = Tokenizer::clean_text(TEST_STR);
         let actual = detokenized;
         assert_eq!(actual.trim(), expected.trim());

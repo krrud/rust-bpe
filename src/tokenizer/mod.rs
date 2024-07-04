@@ -1,2 +1,4 @@
 pub mod tokenizer;
-pub use tokenizer::Tokenizer; 
+pub mod token_config;
+pub use tokenizer::Tokenizer;
+pub use token_config::TokenConfig;

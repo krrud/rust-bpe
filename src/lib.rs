@@ -1,22 +1,24 @@
 mod tokenizer;
-use tokenizer::Tokenizer;
+use tokenizer::{Tokenizer, TokenConfig};
+
 use wasm_bindgen::prelude::*;
 use std::collections::HashSet;
 
 
 #[wasm_bindgen]
-pub struct TokenizerWrapper {
+pub struct TokenizerJS {
     tokenizer: Tokenizer,
 }
 
 #[wasm_bindgen]
-impl TokenizerWrapper {
+impl TokenizerJS {
     #[wasm_bindgen(constructor)]
-    pub fn new(vocabulary: JsValue, merge_rules: JsValue) -> TokenizerWrapper {
+    pub fn new(vocabulary: JsValue, merge_rules: JsValue, config: JsValue) -> TokenizerJS {
         let vocabulary: HashSet<String> = vocabulary.into_serde().unwrap();
         let merge_rules: Vec<(String, String)> = merge_rules.into_serde().unwrap();
-        TokenizerWrapper {
-            tokenizer: Tokenizer::new(vocabulary, merge_rules)
+        let config = config.into_serde().unwrap_or(TokenConfig::new());
+        TokenizerJS {
+            tokenizer: Tokenizer::new(vocabulary, merge_rules, config)
         }
     }
 
@@ -76,11 +78,5 @@ impl TokenizerWrapper {
     #[wasm_bindgen(js_name = load)]
     pub fn load(path: &str) -> JsValue {
         JsValue::from_serde(&Tokenizer::load(path).unwrap()).unwrap()
-    }
-
-    #[wasm_bindgen(js_name = padSequences)]
-    pub fn pad_sequences(&self, sequences: JsValue, max_len: usize) -> JsValue {
-        let sequences: Vec<Vec<usize>> = sequences.into_serde().unwrap();
-        JsValue::from_serde(&self.tokenizer.pad_sequences(&sequences, max_len)).unwrap()
     }
 }
