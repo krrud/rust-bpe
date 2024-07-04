@@ -1,18 +1,15 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
-* @returns {any}
 */
-export function test_print(): any;
-/**
-*/
-export class TokenizerWrapper {
+export class TokenizerJS {
   free(): void;
 /**
 * @param {any} vocabulary
 * @param {any} merge_rules
+* @param {any} config
 */
-  constructor(vocabulary: any, merge_rules: any);
+  constructor(vocabulary: any, merge_rules: any, config: any);
 /**
 * @param {number} index
 * @returns {any}
@@ -59,12 +56,6 @@ export class TokenizerWrapper {
 */
   static load(path: string): any;
 /**
-* @param {any} sequences
-* @param {number} max_len
-* @returns {any}
-*/
-  padSequences(sequences: any, max_len: number): any;
-/**
 */
   readonly getMergeRules: any;
 /**
@@ -76,21 +67,19 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly test_print: () => number;
-  readonly __wbg_tokenizerwrapper_free: (a: number) => void;
-  readonly tokenizerwrapper_new: (a: number, b: number) => number;
-  readonly tokenizerwrapper_getVocabulary: (a: number) => number;
-  readonly tokenizerwrapper_getMergeRules: (a: number) => number;
-  readonly tokenizerwrapper_getToken: (a: number, b: number) => number;
-  readonly tokenizerwrapper_getIndex: (a: number, b: number, c: number) => number;
-  readonly tokenizerwrapper_getTokens: (a: number, b: number) => number;
-  readonly tokenizerwrapper_getIndices: (a: number, b: number) => number;
-  readonly tokenizerwrapper_tokenize: (a: number, b: number, c: number) => number;
-  readonly tokenizerwrapper_detokenize: (a: number, b: number, c: number) => void;
-  readonly tokenizerwrapper_cleanText: (a: number, b: number, c: number) => void;
-  readonly tokenizerwrapper_save: (a: number, b: number, c: number) => number;
-  readonly tokenizerwrapper_load: (a: number, b: number) => number;
-  readonly tokenizerwrapper_padSequences: (a: number, b: number, c: number) => number;
+  readonly __wbg_tokenizerjs_free: (a: number) => void;
+  readonly tokenizerjs_new: (a: number, b: number, c: number) => number;
+  readonly tokenizerjs_getVocabulary: (a: number) => number;
+  readonly tokenizerjs_getMergeRules: (a: number) => number;
+  readonly tokenizerjs_getToken: (a: number, b: number) => number;
+  readonly tokenizerjs_getIndex: (a: number, b: number, c: number) => number;
+  readonly tokenizerjs_getTokens: (a: number, b: number) => number;
+  readonly tokenizerjs_getIndices: (a: number, b: number) => number;
+  readonly tokenizerjs_tokenize: (a: number, b: number, c: number) => number;
+  readonly tokenizerjs_detokenize: (a: number, b: number, c: number) => void;
+  readonly tokenizerjs_cleanText: (a: number, b: number, c: number) => void;
+  readonly tokenizerjs_save: (a: number, b: number, c: number) => number;
+  readonly tokenizerjs_load: (a: number, b: number) => number;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;

@@ -111,38 +111,32 @@ function takeObject(idx) {
     dropObject(idx);
     return ret;
 }
-/**
-* @returns {any}
-*/
-export function test_print() {
-    const ret = wasm.test_print();
-    return takeObject(ret);
-}
 
-const TokenizerWrapperFinalization = (typeof FinalizationRegistry === 'undefined')
+const TokenizerJSFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(ptr => wasm.__wbg_tokenizerwrapper_free(ptr >>> 0));
+    : new FinalizationRegistry(ptr => wasm.__wbg_tokenizerjs_free(ptr >>> 0));
 /**
 */
-export class TokenizerWrapper {
+export class TokenizerJS {
 
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
-        TokenizerWrapperFinalization.unregister(this);
+        TokenizerJSFinalization.unregister(this);
         return ptr;
     }
 
     free() {
         const ptr = this.__destroy_into_raw();
-        wasm.__wbg_tokenizerwrapper_free(ptr);
+        wasm.__wbg_tokenizerjs_free(ptr);
     }
     /**
     * @param {any} vocabulary
     * @param {any} merge_rules
+    * @param {any} config
     */
-    constructor(vocabulary, merge_rules) {
-        const ret = wasm.tokenizerwrapper_new(addHeapObject(vocabulary), addHeapObject(merge_rules));
+    constructor(vocabulary, merge_rules, config) {
+        const ret = wasm.tokenizerjs_new(addHeapObject(vocabulary), addHeapObject(merge_rules), addHeapObject(config));
         this.__wbg_ptr = ret >>> 0;
         return this;
     }
@@ -150,14 +144,14 @@ export class TokenizerWrapper {
     * @returns {any}
     */
     get getVocabulary() {
-        const ret = wasm.tokenizerwrapper_getVocabulary(this.__wbg_ptr);
+        const ret = wasm.tokenizerjs_getVocabulary(this.__wbg_ptr);
         return takeObject(ret);
     }
     /**
     * @returns {any}
     */
     get getMergeRules() {
-        const ret = wasm.tokenizerwrapper_getMergeRules(this.__wbg_ptr);
+        const ret = wasm.tokenizerjs_getMergeRules(this.__wbg_ptr);
         return takeObject(ret);
     }
     /**
@@ -165,7 +159,7 @@ export class TokenizerWrapper {
     * @returns {any}
     */
     getToken(index) {
-        const ret = wasm.tokenizerwrapper_getToken(this.__wbg_ptr, index);
+        const ret = wasm.tokenizerjs_getToken(this.__wbg_ptr, index);
         return takeObject(ret);
     }
     /**
@@ -175,7 +169,7 @@ export class TokenizerWrapper {
     getIndex(token) {
         const ptr0 = passStringToWasm0(token, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.tokenizerwrapper_getIndex(this.__wbg_ptr, ptr0, len0);
+        const ret = wasm.tokenizerjs_getIndex(this.__wbg_ptr, ptr0, len0);
         return takeObject(ret);
     }
     /**
@@ -183,7 +177,7 @@ export class TokenizerWrapper {
     * @returns {any}
     */
     getTokens(indices) {
-        const ret = wasm.tokenizerwrapper_getTokens(this.__wbg_ptr, addHeapObject(indices));
+        const ret = wasm.tokenizerjs_getTokens(this.__wbg_ptr, addHeapObject(indices));
         return takeObject(ret);
     }
     /**
@@ -191,7 +185,7 @@ export class TokenizerWrapper {
     * @returns {any}
     */
     getIndices(tokens) {
-        const ret = wasm.tokenizerwrapper_getIndices(this.__wbg_ptr, addHeapObject(tokens));
+        const ret = wasm.tokenizerjs_getIndices(this.__wbg_ptr, addHeapObject(tokens));
         return takeObject(ret);
     }
     /**
@@ -201,7 +195,7 @@ export class TokenizerWrapper {
     tokenize(text) {
         const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.tokenizerwrapper_tokenize(this.__wbg_ptr, ptr0, len0);
+        const ret = wasm.tokenizerjs_tokenize(this.__wbg_ptr, ptr0, len0);
         return takeObject(ret);
     }
     /**
@@ -213,7 +207,7 @@ export class TokenizerWrapper {
         let deferred1_1;
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.tokenizerwrapper_detokenize(retptr, this.__wbg_ptr, addHeapObject(indices));
+            wasm.tokenizerjs_detokenize(retptr, this.__wbg_ptr, addHeapObject(indices));
             var r0 = getInt32Memory0()[retptr / 4 + 0];
             var r1 = getInt32Memory0()[retptr / 4 + 1];
             deferred1_0 = r0;
@@ -235,7 +229,7 @@ export class TokenizerWrapper {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
             const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             const len0 = WASM_VECTOR_LEN;
-            wasm.tokenizerwrapper_cleanText(retptr, ptr0, len0);
+            wasm.tokenizerjs_cleanText(retptr, ptr0, len0);
             var r0 = getInt32Memory0()[retptr / 4 + 0];
             var r1 = getInt32Memory0()[retptr / 4 + 1];
             deferred2_0 = r0;
@@ -253,7 +247,7 @@ export class TokenizerWrapper {
     save(path) {
         const ptr0 = passStringToWasm0(path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.tokenizerwrapper_save(this.__wbg_ptr, ptr0, len0);
+        const ret = wasm.tokenizerjs_save(this.__wbg_ptr, ptr0, len0);
         return takeObject(ret);
     }
     /**
@@ -263,16 +257,7 @@ export class TokenizerWrapper {
     static load(path) {
         const ptr0 = passStringToWasm0(path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.tokenizerwrapper_load(ptr0, len0);
-        return takeObject(ret);
-    }
-    /**
-    * @param {any} sequences
-    * @param {number} max_len
-    * @returns {any}
-    */
-    padSequences(sequences, max_len) {
-        const ret = wasm.tokenizerwrapper_padSequences(this.__wbg_ptr, addHeapObject(sequences), max_len);
+        const ret = wasm.tokenizerjs_load(ptr0, len0);
         return takeObject(ret);
     }
 }
@@ -311,8 +296,8 @@ async function __wbg_load(module, imports) {
 function __wbg_get_imports() {
     const imports = {};
     imports.wbg = {};
-    imports.wbg.__wbindgen_string_new = function(arg0, arg1) {
-        const ret = getStringFromWasm0(arg0, arg1);
+    imports.wbg.__wbindgen_json_parse = function(arg0, arg1) {
+        const ret = JSON.parse(getStringFromWasm0(arg0, arg1));
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_json_serialize = function(arg0, arg1) {
@@ -325,10 +310,6 @@ function __wbg_get_imports() {
     };
     imports.wbg.__wbindgen_object_drop_ref = function(arg0) {
         takeObject(arg0);
-    };
-    imports.wbg.__wbindgen_json_parse = function(arg0, arg1) {
-        const ret = JSON.parse(getStringFromWasm0(arg0, arg1));
-        return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_throw = function(arg0, arg1) {
         throw new Error(getStringFromWasm0(arg0, arg1));

@@ -59,7 +59,7 @@ cargo build
 ```rust
 let tokenizer = Tokenizer::load("path/to/your/trained_tokenizer.json").unwrap();
 let tokens = tokenizer.tokenize("text to tokenize");  // Returns token indices
-let token_strings = tokenizer.get_tokens(&tokens);    // Converts indices to their associated strings
+let token_strings = tokenizer.get_tokens(&tokens);    // Converts indices to associated strings
 let detokenized = tokenizer.detokenize(&tokens);      // Converts back to the original text
 ```
 
