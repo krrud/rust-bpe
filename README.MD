@@ -15,7 +15,7 @@
 
 This project introduces a robust and efficient tokenizer using Byte-Pair Encoding (BPE) technology, tailored for processing and analyzing linguistic data. Initially configured for the English language, the tokenizer's flexible architecture is capable of supporting a wide range of languages, making it an ideal solution for global text processing applications.
 
-- **Key Features:** Comes pre-loaded with a rich set of over 20,000 tokens, allowing for effective handling and adaptability to diverse and unseen textual inputs.
+- **Key Features:** Comes pre-loaded with a rich set of over 25,000 tokens, allowing for effective handling and adaptability to diverse and unseen textual inputs.
 - **High Performance:** Optimized for speed and efficiency, the tokenizer processes large volumes of text swiftly, facilitating rapid data throughput without sacrificing accuracy.
 -**Multi-language Capability:** Designed to be language-agnostic, offering potential customization options for modeling specific linguistic characteristics of any target language.
 
@@ -97,7 +97,7 @@ async function wasmTokenizer(textInput) {
   let corpus = Tokenizer::process_dataset("path/to/dataset");
 
   // Set the number of iterations for training
-  let iterations = 20000;
+  let iterations = 25000;
 
   // Specify the output path for the trained tokenizer model
   let output = "./src/tokenizer_train.json";
