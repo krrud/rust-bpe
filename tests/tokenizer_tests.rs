@@ -15,7 +15,9 @@ fn validate_tokenizer() {
     let text = Tokenizer::process_dataset("F:/datasets/tokenizer/validate/");
     let tokenizer = Tokenizer::load("./src/models/rust-bpe-uncased-25k.json").unwrap();
 
+    let time = std::time::Instant::now();
     let tokens = tokenizer.tokenize(&text);
+    println!("Tokenization time: {:?}", time.elapsed());
     let token_vals = tokenizer.get_tokens(&tokens);
     let token_indices = tokenizer.get_indices(&token_vals);
     let detokenized = tokenizer.detokenize(&tokens);

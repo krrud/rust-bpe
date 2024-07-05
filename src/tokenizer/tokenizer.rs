@@ -1,17 +1,19 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use dashmap::DashMap;
 use rayon::prelude::*;
-use std::io::stdout;
 use std::io::{self, Write};
 use std::time::Instant;
 use serde::{Serialize, Deserialize};
 use serde_json;
 
 use crate::tokenizer::TokenConfig;
+use crate::tokenizer::TrieNode;
 
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Tokenizer {
+    #[serde(skip_serializing, skip_deserializing)]
+    pub vocabulary_trie: TrieNode,
     pub vocabulary: HashSet<String>,
     pub merge_rules: Vec<(String, String)>,
     pub token_to_index: HashMap<String, usize>,
@@ -21,15 +23,18 @@ pub struct Tokenizer {
 
 impl Tokenizer {
     pub fn new(vocabulary: HashSet<String>, merge_rules: Vec<(String, String)>, config: TokenConfig) -> Self {
+        let mut vocabulary_trie = TrieNode::new();
         let mut token_to_index = HashMap::new();
         let mut index_to_token = HashMap::new();
         
         for (i, token) in vocabulary.iter().enumerate() {
             token_to_index.insert(token.clone(), i);
             index_to_token.insert(i, token.clone());
+            vocabulary_trie.insert(&token);
         }
 
         Tokenizer {
+            vocabulary_trie,
             vocabulary,
             merge_rules,
             token_to_index,
@@ -103,35 +108,20 @@ impl Tokenizer {
         tokens
     }
 
-    pub fn tokenize(&self, text: &str) -> Vec<usize> {
-        // Tokenize text using trained BPE tokenizer
+    pub fn tokenize(&self, input_text: &str) -> Vec<usize> {
+        let text = Self::clean_text(input_text);
         let mut tokens = Vec::new();
         let mut start = 0;
     
         while start < text.len() {
-            let max_match = (start + 1..=text.len())
-                .into_par_iter()
-                .filter_map(|end| {
-                    let substr = &text[start..end];
-                    if self.vocabulary.contains(substr) {
-                        Some((substr, substr.len()))
-                    } else {
-                        None
-                    }
-                })
-                .max_by_key(|&(_, len)| len);
-    
-            match max_match {
-                Some((substr, length)) => {
-                    // Add the longest match and update the start position
-                    tokens.push(self.get_index(substr).unwrap());
-                    start += length;
-                }
-                None => {
-                    // If no token is found, append unknown token
-                    tokens.push(self.config.unknown.index);
-                    start += 1;
-                }
+            if let Some((length, substr)) = self.vocabulary_trie.find_longest_prefix(&text[start..]) {
+                // Add the longest match and update the start position
+                tokens.push(self.get_index(substr).unwrap());
+                start += length;
+            } else {
+                // If no token is found, append unknown token
+                tokens.push(self.config.unknown.index);
+                start += 1;
             }
         }
         tokens
@@ -249,7 +239,6 @@ impl Tokenizer {
                 .map(|entry| *entry.key())
                 .unwrap_or((usize::MAX, usize::MAX));
 
-            let merge_time = Instant::now();
             if first != usize::MAX && second != usize::MAX {
                 let new_token = format!("{}{}", token_list[first], token_list[second]);
                 let new_index = token_list.len();
@@ -345,8 +334,18 @@ impl Tokenizer {
     pub fn load(path: &str) -> std::io::Result<Self> {
         // Load tokenizer from a JSON file
         let data = std::fs::read_to_string(path)?;
-        let config = TokenConfig::new();
-        let tokenizer: Tokenizer = serde_json::from_str(&data)?;
+        let mut tokenizer: Tokenizer = serde_json::from_str(&data)?;
+        tokenizer.build_trie();
+
+
         Ok(tokenizer)
+    }
+
+    pub fn build_trie(&mut self) {
+        let mut vocabulary_trie = TrieNode::new();
+        for token in self.vocabulary.iter() {
+            vocabulary_trie.insert(token);
+        }
+        self.vocabulary_trie = vocabulary_trie;
     }
 }

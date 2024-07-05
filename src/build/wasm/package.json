@@ -1,5 +1,5 @@
 {
-  "name": "rust-bpe",
+  "name": "rust_bpe",
   "version": "0.1.0",
   "files": [
     "rust_bpe_bg.wasm",
