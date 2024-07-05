@@ -74,7 +74,7 @@ async function wasmTokenizer(textInput) {
     const {default: init, TokenizerJs} = await import('/path/to/wasm-pkg');
     await init();
 
-    // Load the vocabulary and merge rules
+    // Load the trained tokenizer
     const fetchTokenizer = await fetch("/path/to/trained-tokenizer.json");
     if (!fetchTokenizer.ok) {
       throw new Error("Failed to fetch tokenizer");
