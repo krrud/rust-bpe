@@ -164,6 +164,7 @@ impl Tokenizer {
 
     pub fn train_cpu(source: &str, iterations: usize, output_filepath: &str, start_filepath: Option<&str>) -> Self {
         // Train tokenizer on CPU using byte pair encoding
+        let start_time = Instant::now();
         let mut config = TokenConfig::new();
         let mut merge_rules: Vec<(String, String)>;
         let mut token_list: Vec<String>;
@@ -192,32 +193,45 @@ impl Tokenizer {
             token_map = HashMap::new();
             let values = config.get_values();
             let indices = config.get_indices();
+
+            // Populate the token_map efficiently
             for (value, &index) in values.iter().zip(indices.iter()) {
-                token_map.insert(value.to_string(), index);
+                token_map.insert(value.clone(), index);
             }
+
+            // Utilize a buffer for character conversion to reduce allocation
+            let mut char_buffer = String::with_capacity(4); // Capacity for a single character string
 
             for word in source.split_whitespace() {
                 for c in word.chars() {
-                    let s = c.to_string().to_lowercase();
-                    let index = *token_map.entry(s.clone()).or_insert_with(|| {
-                        token_list.push(s);
-                        token_list.len() - 1
+                    char_buffer.clear();
+                    char_buffer.push(c);
+                    char_buffer.make_ascii_lowercase();
+
+                    let index = *token_map.entry(char_buffer.clone()).or_insert_with(|| {
+                        let new_index = token_list.len();
+                        token_list.push(char_buffer.clone());
+                        new_index
                     });
                     token_indices.push(index);
                 }
-                token_indices.push(config.space.index); // </w> between words
+                token_indices.push(config.space.index);
             }
-            if *token_indices.last().unwrap() == config.space.index {
-                token_indices.pop();
+
+            // Remove the last space index if it exists
+            if let Some(&last) = token_indices.last() {
+                if last == config.space.index {
+                    token_indices.pop();
+                }
             }
         }
+        println!("Init time: {:?}", start_time.elapsed().as_secs_f32());
 
-        let start_time = Instant::now();
         for i in 0..iterations {
             let iter_time = Instant::now();
             let pair_frequencies = DashMap::new();
 
-            token_indices.par_chunks(5000).for_each(|chunk| {
+            token_indices.par_chunks(8192).for_each(|chunk| {
                 let mut local_map = HashMap::new();
                 for window in chunk.windows(2) {
                     if let [a, b] = window {
