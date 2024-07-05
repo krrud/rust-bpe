@@ -75,39 +75,6 @@ impl Tokenizer {
         text.to_lowercase()
     }
 
-    pub fn split_with_punctuation(text: &str) -> Vec<String> {
-        let mut result = Vec::new();
-        let mut start = 0;
-    
-        for (i, c) in text.char_indices() {
-            if c == '.' || c == '!' || c == '?' {
-                // Include the punctuation mark in the sentence
-                let end = i + c.len_utf8();
-                result.push(text[start..end].to_string());
-                // Move the start to the next character after the punctuation mark
-                start = end;
-            }
-        }
-    
-        // Add any remaining text as the last sentence
-        if start < text.len() {
-            result.push(text[start..].to_string());
-        }
-    
-        result
-    }
-
-    pub fn split_sentences(&self, text: &str) -> Vec<usize> {
-        let cleaned_text = Self::clean_text(text);
-        let mut tokens = Vec::new();
-
-        for sentence in Self::split_with_punctuation(&cleaned_text) {
-            tokens.extend(self.tokenize(&sentence));
-        }
-
-        tokens
-    }
-
     pub fn tokenize(&self, input_text: &str) -> Vec<usize> {
         let text = Self::clean_text(input_text);
         let mut tokens = Vec::new();
