@@ -33,8 +33,8 @@ This project introduces a robust and efficient tokenizer using Byte-Pair Encodin
 For detailed instructions on how to integrate and utilize the tokenizer in both Python environments and web applications, please refer to the [Usage](#usage) section.
 
 **Planned future enhancements include:**
-- *GPU Implementation:* Using WGPU for processing larger training corpora and achieving faster training and tokenization.
-- *Expanded Language Support:* Developing capabilities for capitalized and multilingual tokenization post-performance improvements.
+- **GPU Implementation:** Using WGPU for processing larger training corpora and achieving faster training and tokenization.
+- **Expanded Language Support:** Developing capabilities for capitalized and multilingual tokenization post-performance improvements.
 
 
 ## Installation <a name="installation"></a>
