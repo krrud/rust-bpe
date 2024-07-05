@@ -45,7 +45,7 @@ cargo build
 
 ## Usage <a name="usage"></a>
 
-**To use the tokenize in python:**
+**To use the tokenizer in python:**
 
 *First install the .whl:*
 ```sh
