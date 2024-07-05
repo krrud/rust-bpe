@@ -71,7 +71,7 @@ detokenized = tokenizer.detokenize(tokenized)
 async function wasmTokenizer(textInput) {
   try {
     // Import and initialize the module
-    const {default: init, TokenizerJS} = await import('/path/to/wasm-pkg');
+    const {default: init, TokenizerJs} = await import('/path/to/wasm-pkg');
     await init();
 
     // Load the vocabulary and merge rules
@@ -79,10 +79,10 @@ async function wasmTokenizer(textInput) {
     if (!fetchTokenizer.ok) {
       throw new Error("Failed to fetch tokenizer");
     }
-    const {vocabulary, merge_rules} = await fetchTokenizer.json();
+    const {vocabulary, merge_rules, config} = await fetchTokenizer.json();
 
     // Instantiate the tokenizer
-    const tokenizer = new TokenizerJS(vocabulary, merge_rules);
+    const tokenizer = new TokenizerJs(vocabulary, merge_rules, config);
 
     // Use the tokenizer
     const indices = tokenizer.tokenize(textInput);
