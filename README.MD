@@ -64,6 +64,22 @@ let detokenized = tokenizer.detokenize(&tokens);      // Converts back to the or
 ```
 
 
+**To use the tokenize in python**
+*First install the .whl*
+```sh
+pip install path/to/tokenizer-build.whl
+```
+
+*Then use it as follows*
+```python
+import rust_bpe
+
+tokenizer = rust_bpe.TokenizerPy("path/to/trained-tokenizer.json")
+tokenized = tokenizer.tokenize("some text to tokenize")
+detokenized = tokenizer.detokenize(tokenized)
+```
+
+
 **To use the tokenizer in the browser via Wasm:**
 ```javascript
 async function wasmTokenizer(textInput) {
