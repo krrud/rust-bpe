@@ -85,9 +85,8 @@ async function wasmTokenizer(textInput) {
     const tokenizer = new TokenizerJs(vocabulary, merge_rules, config);
 
     // Use the tokenizer
-    const indices = tokenizer.tokenize(textInput);
-    const strings = tokenizer.getTokens(indices);
-    const rebuilt = tokenizer.detokenize(indices);
+    const tokenized = tokenizer.tokenize(textInput);
+    const detokenized = tokenizer.detokenize(indices);
 
   } catch (error) {
     console.error("Failed to load WASM module or tokenizer:", error);
