@@ -1,5 +1,5 @@
 [package]
-name = "rust-bpe"
+name = "rust_bpe"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,6 +16,7 @@ wgpu = "0.20.1"
 
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 wasm-bindgen-futures = "0.4"
+dashmap = "6.0.1"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]

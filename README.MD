@@ -43,14 +43,14 @@ cargo build
 
   // Optional: start from a pretrained model if available
   // Replace with Some("path/to/pretrained_tokenizer.json") if applicable
-  let pretrained_model_path = None; 
+  let pretrained_model = None; 
 
   // Train the tokenizer
   let tokenizer = Tokenizer::train_cpu(
       &corpus,
       iterations,
       output,
-      pretrained_model_path
+      pretrained_model
   );
 ```
 

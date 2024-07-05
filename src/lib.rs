@@ -1,4 +1,4 @@
-mod tokenizer;
+pub mod tokenizer;
 use tokenizer::{Tokenizer, TokenConfig};
 
 use wasm_bindgen::prelude::*;

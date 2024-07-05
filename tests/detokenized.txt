@@ -1,0 +1,116 @@
+from keras.layers import input, conv2d, concatenate
+from keras.callbacks import reducelronplateau, earlystopping, modelcheckpoint, tensorboard
+from keras.models import model
+from keras.optimizers import adam
+from .util import *
+import datetime
+import os
+import re 
+import keras.backend as k
+
+
+class kpnmodel:        
+    """ kernel predicting convolutional neural network for denoising renders """
+
+    def __init__(self, kernel_size=21, rgb_shape=(64, 64, 3), feature_shape=(64, 64, 31)):
+        self.kernel_size = kernel_size
+        self.rgb_shape = rgb_shape
+        self.feature_shape = feature_shape
+        self.model = self.build_model()
+
+
+    def build_model(self):
+
+        # inputs
+        rgb_inputs = input(self.rgb_shape)
+        feature_inputs = input(self.feature_shape)
+
+        # rgb processing
+        x = conv2d(filters=100, kernel_size=5, padding='same', activation='relu')(rgb_inputs)
+        x = conv2d(filters=100, kernel_size=5, padding='same', activation='relu')(x)
+        x = conv2d(filters=100, kernel_size=5, padding='same', activation='relu')(x)
+        x = conv2d(filters=100, kernel_size=5, padding='same', activation='relu')(x)
+
+        # feature processing
+        y = conv2d(filters=100, kernel_size=5, padding='same', activation='relu')(feature_inputs)
+        y = conv2d(filters=100, kernel_size=5, padding='same', activation='relu')(y)
+        y = conv2d(filters=100, kernel_size=5, padding='same', activation='relu')(y)
+        y = conv2d(filters=100, kernel_size=5, padding='same', activation='relu')(y)
+
+        # concatenate rgb and features
+        concat = concatenate()([x, y])
+
+        # kernel prediction
+        outputs = conv2d(filters=3, kernel_size=self.kernel_size, padding='same', activation='relu')(concat)
+        model = model(inputs=[rgb_inputs, feature_inputs], outputs=outputs)
+
+        return model
+
+use my_tokenizer::tokenizer::tokenizer;
+
+#[test]
+fn validate_tokenizer() {
+    let text = tokenizer::process_dataset("f:/datasets/tokenizer/validate/");
+    let tokenizer = tokenizer::load("./src/tokenizer_train.json").unwrap();
+    let duplicates = has_duplicates(tokenizer.vocabulary.iter().cloned().collect::<vec<_>>());
+    assert_eq!(duplicates, false);
+
+    let tokens = tokenizer.tokenize(&text);
+    let token_vals = tokenizer.get_tokens(&tokens);
+    let token_indices = tokenizer.get_indices(&token_vals);
+    let detokenized = tokenizer.detokenize(&tokens);
+
+    println!("input: {:?}", &text);
+    println!("tokens: {:?}", token_vals); 
+    // println!("token indices: {:?}", token_indices);
+    println!("detokenized: {:?}", detokenized);
+    println!("num tokens: {:?}", tokens.len());
+    println!("vocabulary size: {:?}", tokenizer.vocabulary.len());
+
+    let expected = tokenizer::clean_text(&text);
+    let actual = detokenized;
+    std::fs::write("./detokenized.txt", &actual).unwrap();
+    assert_eq!(actual.trim(), expected.trim());
+}
+
+fn has_duplicates(mut vocab: vec<string>) -> bool {
+    vocab.sort();
+    vocab.windows(2).any(|w| w[0] == w[1])
+}
+
+
+
+lincoln's gettysburg address, given november 19, 1863
+on the battlefield near gettysburg, pennsylvania, usa
+
+
+four score and seven years ago, our fathers brought forth
+upon this continent a new nation:  conceived in liberty, and
+dedicated to the proposition that all men are created equal.
+
+now we are engaged in a great civil war. . .testing whether
+that nation, or any nation so conceived and so dedicated. . .
+can long endure.  we are met on a great battlefield of that war.
+
+we have come to dedicate a portion of that field as a final resting place
+for those who here gave their lives that this nation might live.
+it is altogether fitting and proper that we should do this.
+
+but, in a larger sense, we cannot dedicate. . .we cannot consecrate. . .
+we cannot hallow this ground.  the brave men, living and dead,
+who struggled here have consecrated it, far above our poor power
+to add or detract.  the world will little note, nor long remember,
+what we say here, but it can never forget what they did here.
+
+it is for us the living, rather, to be dedicated here to the unfinished
+work which they who fought here have thus far so nobly advanced.
+it is rather for us to be here dedicated to the great task remaining
+before us. . .that from these honored dead we take increased devotion
+to that cause for which they gave the last full measure of devotion. . .
+that we here highly resolve that these dead shall not have died in vain. . .
+that this nation, under god, shall have a new birth of freedom. . .
+and that government of the people. . .by the people. . .for the people. . .
+shall not perish from this earth.
+
+
+
