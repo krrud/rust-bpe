@@ -44,48 +44,15 @@ cargo build
 
 
 ## Usage <a name="usage"></a>
-**To train the tokenizer with your corpus:**
-```rust
-  // Load the dataset from the specified directory
-  let corpus = Tokenizer::process_dataset("path/to/dataset");
-
-  // Set the number of iterations for training
-  let iterations = 20000;
-
-  // Specify the output path for the trained tokenizer model
-  let output = "./src/tokenizer_train.json";
-
-  // Optional: start from a pretrained model if available
-  // Replace with Some("path/to/pretrained_tokenizer.json") if applicable
-  let pretrained_model = None; 
-
-  // Train the tokenizer
-  let tokenizer = Tokenizer::train_cpu(
-      &corpus,
-      iterations,
-      output,
-      pretrained_model
-  );
-```
-
-
-**To tokenize text to indices, convert to token strings, or detokenize back to the input:**
-```rust
-let tokenizer = Tokenizer::load("path/to/your/trained_tokenizer.json").unwrap();
-let tokens = tokenizer.tokenize("text to tokenize");  // Returns token indices
-let token_strings = tokenizer.get_tokens(&tokens);    // Converts indices to associated strings
-let detokenized = tokenizer.detokenize(&tokens);      // Converts back to the original text
-```
-
 
 **To use the tokenize in python:**
 
-*First install the .whl*
+*First install the .whl:*
 ```sh
 pip install path/to/tokenizer-build.whl
 ```
 
-*Then use it as follows*
+*Then use it as follows:*
 ```python
 import rust_bpe
 
@@ -122,6 +89,38 @@ async function wasmTokenizer(textInput) {
     console.error("Failed to load WASM module or tokenizer:", error);
   }
 };
+```
+
+**To train the tokenizer with Rust directly:**
+```rust
+  // Load the dataset from the specified directory
+  let corpus = Tokenizer::process_dataset("path/to/dataset");
+
+  // Set the number of iterations for training
+  let iterations = 20000;
+
+  // Specify the output path for the trained tokenizer model
+  let output = "./src/tokenizer_train.json";
+
+  // Optional: start from a pretrained model if available
+  // Replace with Some("path/to/pretrained_tokenizer.json") if applicable
+  let pretrained_model = None; 
+
+  // Train the tokenizer
+  let tokenizer = Tokenizer::train_cpu(
+      &corpus,
+      iterations,
+      output,
+      pretrained_model
+  );
+```
+
+**To tokenize text to indices, convert to token strings, or detokenize back to the input:**
+```rust
+let tokenizer = Tokenizer::load("path/to/your/trained_tokenizer.json").unwrap();
+let tokens = tokenizer.tokenize("text to tokenize");  // Returns token indices
+let token_strings = tokenizer.get_tokens(&tokens);    // Converts indices to associated strings
+let detokenized = tokenizer.detokenize(&tokens);      // Converts back to the original text
 ```
 
 
