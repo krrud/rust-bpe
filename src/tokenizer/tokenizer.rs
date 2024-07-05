@@ -304,7 +304,6 @@ impl Tokenizer {
         let mut tokenizer: Tokenizer = serde_json::from_str(&data)?;
         tokenizer.build_trie();
 
-
         Ok(tokenizer)
     }
 
