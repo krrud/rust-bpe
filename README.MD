@@ -24,7 +24,7 @@ This project introduces a robust and efficient tokenizer using Byte-Pair Encodin
 
 ## Technology Stack <a name="stack"></a>
 
-- **Rust:** Employs Rust’s powerful performance characteristics and memory safety guarantees to ensure high-speed data processing with minimal overhead. Rust's robust type system and ownership model eliminate common bugs, making it ideal for building reliable and efficient tokenization tools.
+- **Rust:** Employs Rust’s powerful performance characteristics and memory safety guarantees to ensure high-speed data processing with minimal overhead. All text processing is handled in rust, with convenient interfaces for both python and javascript to allow for wide spread usage.
 
 - **PyO3:** Enables seamless integration with Python, allowing the tokenizer to be used as a native Python extension. This integration provides the benefits of Rust's performance and safety in Python's flexible and dynamic ecosystem.
 
