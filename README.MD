@@ -4,6 +4,7 @@
 
 ## Table of Contents
 - [Overview](#overview)
+- [Technology Stack](#stack)
 - [Installation](#installation)
 - [Usage](#usage)
 - [License](#license)
@@ -11,9 +12,21 @@
 
 
 ## Overview <a name="overview"></a>
-This project introduces a robust and lightweight byte-pair encoding (BPE) tokenizer, designed to handle linguistic data efficiently. While it primarily focuses on the English language, its architecture allows it to model any language effectively. The tokenizer is equipped with a comprehensive vocabulary of over 20,000 tokens, demonstrating strong adaptability to a variety of unseen text inputs.
 
-The tokenizer is compiled for web use, leveraging the power of WebAssembly through wasm-bindgen. This makes it readily accessible for integration into web applications, providing a seamless user experience without the need for server-side processing.
+This project introduces a robust and efficient tokenizer using Byte-Pair Encoding (BPE) technology, tailored for processing and analyzing linguistic data. Initially configured for the English language, the tokenizer's flexible architecture is capable of supporting a wide range of languages, making it an ideal solution for global text processing applications.
+
+- **Key Features:** Comes pre-loaded with a rich set of over 20,000 tokens, allowing for effective handling and adaptability to diverse and unseen textual inputs.
+- **High Performance:** Optimized for speed and efficiency, the tokenizer processes large volumes of text swiftly, facilitating rapid data throughput without sacrificing accuracy.
+-**Multi-language Capability:** Designed to be language-agnostic, offering potential customization options for modeling specific linguistic characteristics of any target language.
+
+
+## Technology Stack <a name="stack"></a>
+
+- **Rust:** Employs Rust’s powerful performance characteristics and memory safety guarantees to ensure high-speed data processing with minimal overhead. Rust's robust type system and ownership model eliminate common bugs, making it ideal for building reliable and efficient tokenization tools.
+- **PyO3:** Enables seamless integration with Python, allowing the tokenizer to be used as a native Python extension. This integration provides the benefits of Rust's performance and safety in Python's flexible and dynamic ecosystem.
+- **Web Assembly:** Compiled to WebAssembly for high-performance use in web applications, ensuring that the tokenizer can be run directly in the browser with near-native speed.
+
+For detailed instructions on how to integrate and utilize the tokenizer in both Python environments and web applications, please refer to the [Usage](#usage) section.
 
 **Planned future enhancements include:**
 - *GPU Implementation:* Using WGPU for processing larger training corpora and achieving faster training and tokenization.
@@ -21,6 +34,7 @@ The tokenizer is compiled for web use, leveraging the power of WebAssembly throu
 
 
 ## Installation <a name="installation"></a>
+
 **To run this project, execute the following commands in your terminal:**
 ```sh
 git clone https://github.com/krrud/rust-bpe.git
@@ -64,7 +78,8 @@ let detokenized = tokenizer.detokenize(&tokens);      // Converts back to the or
 ```
 
 
-**To use the tokenize in python**
+**To use the tokenize in python:**
+
 *First install the .whl*
 ```sh
 pip install path/to/tokenizer-build.whl
