@@ -19,7 +19,7 @@ This project introduces a robust and efficient tokenizer using Byte-Pair Encodin
 
 - **High Performance:** Optimized for speed and efficiency, the tokenizer processes large volumes of text swiftly, facilitating rapid data throughput without sacrificing accuracy.
 
--**Multi-language Capability:** Designed to be language-agnostic, offering potential customization options for modeling specific linguistic characteristics of any target language.
+- **Multi-language Capability:** Designed to be language-agnostic, offering potential customization options for modeling specific linguistic characteristics of any target language.
 
 
 ## Technology Stack <a name="stack"></a>
