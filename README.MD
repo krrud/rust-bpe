@@ -56,7 +56,7 @@ pip install path/to/tokenizer-build.whl
 ```python
 import rust_bpe
 
-tokenizer = rust_bpe.TokenizerPy("path/to/trained-tokenizer.json")
+tokenizer = rust_bpe.TokenizerPy("/path/to/trained-tokenizer.json")
 tokenized = tokenizer.tokenize("some text to tokenize")
 detokenized = tokenizer.detokenize(tokenized)
 ```
@@ -71,7 +71,7 @@ async function wasmTokenizer(textInput) {
     await init();
 
     // Load the vocabulary and merge rules
-    const fetchTokenizer = await fetch("/path/to/trained_model.json");
+    const fetchTokenizer = await fetch("/path/to/trained-tokenizer.json");
     if (!fetchTokenizer.ok) {
       throw new Error("Failed to fetch tokenizer");
     }
