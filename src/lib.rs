@@ -133,39 +133,36 @@ impl TokenizerPy {
     }
     
     #[getter]
-    fn get_vocabulary(&self) -> PyResult<String> {
-        serde_json::to_string(&self.tokenizer.get_vocabulary())
-            .map_err(|e| PyErr::new::<PyValueError, _>(format!("Error serializing vocabulary: {}", e)))
+    fn get_vocabulary(&self) -> PyResult<HashSet<String>> {
+        Ok(self.tokenizer.get_vocabulary())
     }
 
     #[getter]
-    fn get_merge_rules(&self) -> PyResult<String> {
-        serde_json::to_string(&self.tokenizer.get_merge_rules())
-            .map_err(|e| PyErr::new::<PyValueError, _>(format!("Error serializing merge rules: {}", e)))
+    fn get_merge_rules(&self) -> PyResult<Vec<(String, String)>> {
+        Ok(self.tokenizer.get_merge_rules())
     }
 
     fn get_token(&self, index: usize) -> PyResult<String> {
-        serde_json::to_string(&self.tokenizer.get_token(index))
-            .map_err(|e| PyErr::new::<PyValueError, _>(format!("Error serializing token: {}", e)))
+        match self.tokenizer.get_token(index) {
+            Some(index) => Ok(index),
+            None => Err(PyErr::new::<PyValueError, _>(format!("Token not found: {}", index))),
+        }
     }
 
-    fn get_index(&self, token: &str) -> PyResult<String> {
-        serde_json::to_string(&self.tokenizer.get_index(token))
-            .map_err(|e| PyErr::new::<PyValueError, _>(format!("Error serializing index: {}", e)))
+    fn get_index(&self, token: &str) -> PyResult<usize> {
+        match self.tokenizer.get_index(token) {
+            Some(index) => Ok(index),
+            None => Err(PyErr::new::<PyValueError, _>(format!("Token not found: {}", token))),
+        }
     }
 
-    fn get_tokens(&self, indices_json: &str) -> PyResult<String> {
-        let indices: Vec<usize> = serde_json::from_str(indices_json)
-            .map_err(|e| PyErr::new::<PyValueError, _>(format!("Error deserializing indices JSON: {}", e)))?;
-        let tokens = self.tokenizer.get_tokens(&indices);
-        serde_json::to_string(&tokens)
-            .map_err(|e| PyErr::new::<PyValueError, _>(format!("Error serializing tokens: {}", e)))
+    fn get_tokens(&self, indices: Vec<usize>) -> PyResult<Vec<String>> {
+        Ok(self.tokenizer.get_tokens(&indices))
     }
     
 
-    fn get_indices(&self, tokens: Vec<String>) -> PyResult<String> {
-        serde_json::to_string(&self.tokenizer.get_indices(&tokens))
-            .map_err(|e| PyErr::new::<PyValueError, _>(format!("Error serializing indices: {}", e)))
+    fn get_indices(&self, tokens: Vec<String>) -> PyResult<Vec<usize>> {
+        Ok(self.tokenizer.get_indices(&tokens))
     }
 
     fn tokenize(&self, text: &str) -> PyResult<Vec<usize>> {
